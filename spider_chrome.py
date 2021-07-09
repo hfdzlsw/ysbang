@@ -57,6 +57,7 @@ def get_driver_by_login():
 
 
 def search(keyword):
+    driver.find_element_by_xpath("//input[@id='searchKey']").clear()
     driver.find_element_by_xpath("//input[@id='searchKey']").send_keys(keyword)
     driver.find_element_by_xpath("//span[@class='search-btn']").click()
     time.sleep(5)
