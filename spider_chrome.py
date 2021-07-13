@@ -13,6 +13,10 @@ import numpy as np
 import pandas as pd
 from selenium import webdriver
 import matplotlib.pyplot as plt
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 current_path = os.path.abspath(__file__)
@@ -57,8 +61,9 @@ def get_driver_by_login():
 
 
 def search(keyword):
-    driver.find_element_by_xpath("//input[@id='searchKey']").clear()
-    driver.find_element_by_xpath("//input[@id='searchKey']").send_keys(keyword)
+    search_elem = driver.find_element_by_xpath("//input[@id='searchKey']")
+    search_elem.send_keys(Keys.CONTROL + "a" + Keys.DELETE)
+    search_elem.send_keys(keyword)
     driver.find_element_by_xpath("//span[@class='search-btn']").click()
     time.sleep(5)
     # 点击搜索结果
@@ -67,15 +72,24 @@ def search(keyword):
         try:
             driver.find_element_by_xpath("//div[@class='drug-drugInfo'][@d-index='{}']".format(i)).click()
             time.sleep(5)
+            if len(driver.window_handles) < 2:
+                driver.find_element_by_xpath("//div[@class='drug-drugInfo'][@d-index='{}']".format(i)).click()
+                time.sleep(5)
             driver.switch_to.window(driver.window_handles[1])
             text = driver.page_source
             # print(text)
-            name = driver.find_element_by_xpath("//div[@class='drug-name emphasized']").text  # 名称
+            name_elem = WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.XPATH, "//div[@class='drug-name emphasized']")))
+            name = name_elem.text  # 名称
             elems = driver.find_elements_by_xpath("//button[text()='参与拼团']")
             if len(elems) > 0:  # 不采集拼团
                 print(name)
             else:
-                common_name = driver.find_element_by_xpath("//div[@class='new-drugInfo-div-content-cell2-content-p-content']/p").text  # 商品名称
+                try:
+                    common_name = driver.find_element_by_xpath("//div[@class='new-drugInfo-div-content-cell2-content-p-content']/p").text  # 商品名称
+                except:
+                    driver.find_element_by_xpath("(//div[@class='new-drugInfo-div-tab-cell'])[1]").click()
+                    time.sleep(1)
+                    common_name = driver.find_element_by_xpath("//div[@class='new-drugInfo-div-content-cell2-content-p-content']/p").text  # 商品名称
                 approval = driver.find_element_by_xpath("//div[@class='drug-info']/p[1]/span[2]").text  # 批准文号
                 specification = driver.find_element_by_xpath("//div[@class='drug-info']/p[2]/span[2]").text  # 规格
                 manufacturer = re.sub(r'[\s\S]+>生产厂家</span>[\s\S]+?<span.+?>([\s\S]+?)<[\s\S]+', r'\1', text)  # 生产厂家
@@ -103,9 +117,9 @@ def search(keyword):
                 save_data.append([name, common_name, approval, specification, manufacturer, expireDate, price, dis_price, provider_name])
             driver.close()
             driver.switch_to.window(driver.window_handles[0])
+            # break  # 快速测试
         except Exception as e:
-            print()
-            raise e
+            print(e)
 
 
 def get_search_data_detail():
